@@ -21,7 +21,7 @@ connection.connect(function (err) {
 
 
 function initialize() {
-    const choiceArr = ["Add", "View", "Update", "Quit"]
+    const choiceArr = ["Add", "View", "Update Employee", "Quit"]
     inquirer.prompt([{
         type: "rawlist",
         message: "Welcome to the Employee Manager! \n What would you like to do?",
@@ -144,13 +144,103 @@ function addNewEmployee() {
             type: "input",
             message: "Enter your new employee's manager id. (Set as 0 if new employee is manager)",
             name: "manager"
-        }]).then(function(ans){
-            connection.query("SELECT id FROM role WHERE title = ?", [ans.role], function(err, results){
-                if(err) throw err;
+        }]).then(function (ans) {
+            connection.query("SELECT id FROM role WHERE title = ?", [ans.role], function (err, results) {
+                if (err) throw err;
                 const newEmp = new Employee(ans.first, ans.last, results[0].id, ans.manager)
                 console.log(newEmp)
                 newEmp.addEmployee();
             })
         })
     })
-}   
+}
+
+function tableView() {
+    const viewChoice = ["Departments", "Employees", "Roles"]
+    inquirer.prompt({
+        type: "rawlist",
+        message: "What would you like to view?",
+        choices: viewChoice,
+        name: "choice"
+    }).then(function (ans) {
+        if (ans.choice === viewChoice[0]) {
+            viewDepartments();
+        }
+        else if (ans.choice === viewChoice[1]) {
+            viewEmployees();
+        }
+        else if (ans.choice === viewChoice[2]) {
+            viewRoles();
+        }
+    })
+}
+
+function viewDepartments() {
+    connection.query("SELECT * FROM department", function (err, res) {
+        if (err) throw err;
+        console.table(res)
+        initialize();
+    })
+}
+
+function viewEmployees() {
+    connection.query("SELECT * FROM employee", function (err, res) {
+        if (err) throw err;
+        console.table(res)
+        initialize();
+    })
+}
+
+function viewRoles() {
+    connection.query("SELECT * FROM role", function (err, res) {
+        if (err) throw err;
+        console.table(res)
+        initialize();
+    })
+}
+
+function updateEmployee() {
+    var employeeId = 0;
+    var roleArr = []
+    connection.query("SELECT * FROM employee", function (err, res) {
+        if (err) throw err;
+        console.table(res);
+        const empId = []
+        for (let employee of res) {
+            empId.push(employee.id)
+        }
+        inquirer.prompt({
+            type: "rawlist",
+            message: "Which employee would like to update?",
+            choices: empId,
+            name: "employeeId"
+        }).then(function (ans) {
+            employeeId = ans.employeeId
+            roleQueryUpdate(employeeId);
+        })
+    })
+}
+
+function roleQueryUpdate(employeeId){
+    connection.query("SELECT * FROM role"), function (err, results) {
+        if (err) throw err;
+        var roles = results;
+        for (let row of roles) {
+            roleArr.push(row.title);
+        }
+        inquirer.prompt({
+            input: "rawlist",
+            message: "What role would you like to assign to this employee?",
+            choices: roleArr,
+            name: "updatedRole"
+        }).then(function (answer) {
+            connection.query("SELECT id FROM role WHERE title = ?", [answer.updatedRole], function (err, response) {
+                if (err) throw err;
+                connection.query("UPDATE employee SET role_id = ? WHERE id = ?", [response[0].id, employeeId])
+                console.log("Employee role updated!")
+                initialize();
+            })
+        })
+    }
+
+}
